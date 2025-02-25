@@ -1,0 +1,81 @@
+{% extends 'detection/base.html' %}
+
+{% block title %}Accueil - Détection de contenu{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-body">
+        <h1 class="card-title text-center mb-4"><i class="fas fa-search"></i> Analyse de contenu</h1>
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="url" class="form-label">Entrez l'URL à analyser :</label>
+                <input type="url" name="url" class="form-control" id="url" placeholder="https://example.com" required autocomplete="off" maxlength="500">
+                <small class="form-text text-muted"><span id="char-count">500</span> caractères restants</small>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-spinner fa-spin d-none" id="loading-icon"></i>
+                Analyser
+            </button>
+        </form>
+
+        <!-- Affichage des messages d'erreur ou de succès -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} mt-4">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    /* Animation pour le spinner */
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .fa-spinner {
+        animation: spin 1s linear infinite;
+    }
+</style>
+
+<script>
+    // Afficher un spinner et désactiver le bouton pendant l'analyse
+    document.querySelector('form').addEventListener('submit', function(event) {
+        const urlInput = event.target.querySelector('input[type="url"]');
+        const button = event.target.querySelector('button');
+
+        // Validation côté client
+        if (!urlInput.checkValidity()) {
+            event.preventDefault();
+            alert("Veuillez entrer une URL valide.");
+            return;
+        }
+
+        // Afficher le spinner et désactiver le bouton
+        document.getElementById('loading-icon').classList.remove('d-none');
+        button.disabled = true;
+    });
+
+    // Compteur de caractères
+    const urlInput = document.getElementById('url');
+    const charCount = document.getElementById('char-count');
+
+    urlInput.addEventListener('input', function() {
+        const remaining = 500 - urlInput.value.length;
+        charCount.textContent = remaining;
+    });
+
+    // Supprimer automatiquement les messages après 5 secondes
+    setTimeout(() => {
+        document.querySelectorAll('.alert').forEach(alert => {
+            alert.style.transition = "opacity 0.5s";
+            alert.style.opacity = "0";
+            setTimeout(() => alert.remove(), 500);
+        });
+    }, 5000);
+</script>
+{% endblock %}
