@@ -12,10 +12,16 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 
-access_token = os.getenv("FB_ACCESS_TOKEN")
+load_dotenv()
 
+# Accédez aux variables d'environnement
+FB_ACCESS_TOKEN = os.getenv("FB_ACCESS_TOKEN")
+print(f"FB_ACCESS_TOKEN dans settings.py : {FB_ACCESS_TOKEN}")
+SIGHTENGINE_API_USER = os.getenv("SIGHTENGINE_API_USER")
+SIGHTENGINE_API_SECRET = os.getenv("SIGHTENGINE_API_SECRET")
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
