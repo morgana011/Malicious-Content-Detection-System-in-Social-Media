@@ -28,7 +28,15 @@
                 {% endif %}
             </p>
         </div>
-
+        {% if result.analysis_report %}
+        <div class="text-center mt-4">
+            <a href="{{ result.analysis_report.url }}" class="btn btn-primary" download>
+                <i class="fas fa-download"></i> Télécharger le rapport PDF
+            </a>
+        </div>
+    {% else %}
+        <p class="text-muted text-center">Aucun rapport disponible.</p>
+    {% endif %}
         <!-- Bouton pour télécharger le rapport PDF -->
         <div class="text-center mt-4">
             <a href="{{ result.analysis_report.url }}" class="btn btn-primary" download>

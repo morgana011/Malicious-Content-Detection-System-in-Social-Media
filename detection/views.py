@@ -21,15 +21,18 @@ API_USER = os.getenv("SIGHTENGINE_API_USER")
 API_SECRET = os.getenv("SIGHTENGINE_API_SECRET")
 
 def index(request):
-    if request.method == 'POST':
-        url = request.POST.get('url')
+    status = ""
+    risk_score = 0  # Définir une valeur de score de risque par défaut
 
-        # Vérification de l'URL
+    if request.method == "POST":
+        url = request.POST.get("url", "")
+        
         if not validators.url(url):
             logger.warning(f"URL invalide soumise : {url}")
             messages.error(request, 'URL invalide')
             return render(request, 'detection/index.html', {'error': 'URL invalide'})
 
+        # Vérification du type de contenu
         if 'facebook.com' in url.lower():
             # Extraire l'ID du post Facebook
             post_id = url.split("fbid=")[-1].split("&")[0] if "fbid=" in url else None
@@ -46,7 +49,7 @@ def index(request):
                 return redirect('index')
 
             text_content = facebook_content.get("text")
-            image_url = facebook_content.get("image_url")
+            image_url = facebook_content.get("image_urls")[0] if facebook_content.get("image_urls") else None
             video_url = facebook_content.get("video_url")
 
             # Déterminer le type de contenu
@@ -64,7 +67,7 @@ def index(request):
             api_url = "https://api.sightengine.com/1.0/check.json"
             params = {
                 'url': media_url,
-                'models': 'nudity,wad,offensive',
+                'models': 'nudity,weapon,alcohol,offensive',
                 'api_user': API_USER,
                 'api_secret': API_SECRET
             }
@@ -101,11 +104,12 @@ def index(request):
             pdf_path = default_storage.save(pdf_name, buffer)
 
             # Sauvegarde en base de données
-            result = AnalysisResult.objects.create(
-                url=url,
-                content_type=content_type,
-                is_malicious=is_malicious,
-                analysis_report=pdf_path
+            result, created = AnalysisResult.objects.get_or_create(
+                url=url,  # Remplace 'url' par la variable contenant l'URL
+                defaults={
+                    "status": "URL analysée",
+                    "risk_score": 100  # Calcul du score de risque à définir
+                }
             )
 
             messages.success(request, 'Analyse terminée avec succès')
@@ -120,37 +124,49 @@ def result(request, result_id):
 
 def get_facebook_post_content(post_id):
     """
-    Récupère l'image, la vidéo et le texte d'un post Facebook via l'API Graph.
-    Retourne un dictionnaire contenant les URLs des médias et le texte du post.
+    Récupère uniquement l'image d'un post Facebook via l'API Graph.
+    Retourne un dictionnaire avec les URLs des images ou une erreur.
     """
     access_token = os.getenv("FB_ACCESS_TOKEN")
-    logger.info(f"FB_ACCESS_TOKEN chargé : {access_token}")  # Ajoutez ce log
+    
     if not access_token:
         logger.error("FB_ACCESS_TOKEN manquant")
-        return None
-
-
+        return {"error": "FB_ACCESS_TOKEN manquant"}
+    
     try:
+        # Initialiser l'API Graph avec le token d'accès
         graph = facebook.GraphAPI(access_token)
-        post_data = graph.get_object(post_id, fields="message,full_picture,attachments")
+        
+        # Demander uniquement les champs pertinents pour le type de contenu
+        post_data = graph.get_object(post_id, fields="images,picture")
+        print(post_data)
+        
+        # Initialisation de la liste pour stocker les URLs des images
+        image_urls = []
 
-        # Récupérer le texte du post
-        text_content = post_data.get("message", "")
+        # Vérification de la présence de 'images' (pour les posts avec des images)
+        if "images" in post_data:
+            for image in post_data["images"]:
+                image_url = image.get("source")  # 'source' contient l'URL de l'image en haute résolution
+                if image_url:
+                    image_urls.append(image_url)
 
-        # Récupérer l'image si disponible
-        image_url = post_data.get("full_picture")
+        if not image_urls and "picture" in post_data:
+            image_urls.append(post_data["picture"])
 
-        # Récupérer la vidéo si disponible
-        video_url = None
-        if "attachments" in post_data:
-            attachments = post_data["attachments"].get("data", [])
-            for attachment in attachments:
-                if attachment.get("type") == "video":
-                    video_url = attachment["url"]
-                    break  # Prend la première vidéo trouvée
-
-        return {"text": text_content, "image_url": image_url, "video_url": video_url}
+        # Si aucune image n'est trouvée, loguer un message d'information
+        if not image_urls:
+            logger.info(f"Le post {post_id} ne contient pas d'image.")
+        
+        return {
+            "image_urls": image_urls
+        }
 
     except facebook.GraphAPIError as e:
-        logger.error(f"Erreur API Graph Facebook : {e}")
-        return None
+        error_message = str(e)
+        if "Unsupported get request" in error_message:
+            logger.error("Accès refusé : le post est privé ou les permissions sont insuffisantes.")
+            return {"error": "Accès refusé : le post est privé ou les permissions sont insuffisantes."}
+        else:
+            logger.exception(f"Erreur API Graph Facebook : {e}")
+            return {"error": f"Erreur API Graph Facebook : {e}"}

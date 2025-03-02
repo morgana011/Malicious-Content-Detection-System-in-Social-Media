@@ -9,7 +9,11 @@ def upload_to_reports(instance, filename):
     return os.path.join('reports', new_filename)
 
 class AnalysisResult(models.Model):
-    url = models.URLField(max_length=500, unique=True)  
+    url = models.CharField(max_length=255, unique=True)
+    status = models.CharField(max_length=50, default="pending")
+    risk_score = models.IntegerField(null=True, blank=True)
+    
+
     CONTENT_TYPE=[
         ('image', 'Image'),
         ('video', 'Vidéo'),
@@ -17,7 +21,6 @@ class AnalysisResult(models.Model):
         ('other', 'Autre'),
 
     ]
-    
     content_type = models.CharField(max_length=50, choices= CONTENT_TYPE, default='other') 
     is_malicious = models.BooleanField(default=False, help_text="Score de confiance de l'analyse (0 à 1)")  
     analysis_report = models.FileField(upload_to=upload_to_reports)  
