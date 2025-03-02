@@ -1,0 +1,51 @@
+{% extends 'detection/base.html' %}
+
+{% block title %}Résultat - Détection de contenu{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-body">
+        <h1 class="card-title text-center mb-4"><i class="fas fa-file-alt"></i> Résultat de l'analyse</h1>
+
+        <!-- Affichage des résultats -->
+        <div class="mb-4">
+            <h5>URL analysée :</h5>
+            <p class="text-break">{{ result.url }}</p>
+        </div>
+
+        <div class="mb-4">
+            <h5>Type de contenu :</h5>
+            <p>{{ result.content_type }}</p>
+        </div>
+
+        <div class="mb-4">
+            <h5>Résultat :</h5>
+            <p class="{% if result.is_malicious %}text-danger{% else %}text-success{% endif %}">
+                {% if result.is_malicious %}
+                    <i class="fas fa-times-circle"></i> Malveillant
+                {% else %}
+                    <i class="fas fa-check-circle"></i> Bénin
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Section pour télécharger le rapport si disponible -->
+        {% if result.analysis_report %}
+            <div class="text-center mt-4">
+                <a href="{{ result.analysis_report.url }}" class="btn btn-primary" download>
+                    <i class="fas fa-download"></i> Télécharger le rapport PDF
+                </a>
+            </div>
+        {% else %}
+            <p class="text-muted text-center">Aucun rapport disponible.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Bouton pour revenir à l'accueil -->
+<div class="text-center mt-4">
+    <a href="{% url 'index' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Retour à l'accueil
+    </a>
+</div>
+{% endblock %}
