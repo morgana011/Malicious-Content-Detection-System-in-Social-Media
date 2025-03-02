@@ -12,6 +12,7 @@ from django.contrib import messages
 from django.core.files.storage import default_storage
 from reportlab.pdfgen import canvas
 from .models import AnalysisResult
+from django.http import Http404
 
 # Configuration du logger
 logger = logging.getLogger(__name__)
@@ -119,8 +120,14 @@ def index(request):
     return render(request, 'detection/index.html')
 
 def result(request, result_id):
-    result = get_object_or_404(AnalysisResult, id=result_id)
+    try:
+        result = get_object_or_404(AnalysisResult, id=result_id)
+    except Http404:
+        # Si l'objet n'est pas trouvé, afficher un message d'erreur ou rediriger vers une autre page
+        return render(request, 'detection/error.html', {'message': "Résultat introuvable"})
+    
     return render(request, 'detection/result.html', {'result': result})
+    
 
 def get_facebook_post_content(post_id):
     """
